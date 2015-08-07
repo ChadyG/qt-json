@@ -24,10 +24,10 @@
 #include "json.h"
 
 namespace QtJson {
-    static QString dateFormat, dateTimeFormat;
+    static QString dateFormat, dateTimeFormat, indentStr = "    ";
 
     static QString sanitizeString(QString str);
-    static QByteArray join(const QList<QByteArray> &list, const QByteArray &sep);
+    static QByteArray join(const QList<QByteArray> &list, const QByteArray &sep, const QByteArray &indent);
     static QVariant parseValue(const QString &json, int &index, bool &success);
     static QVariant parseObject(const QString &json, int &index, bool &success);
     static QVariant parseArray(const QString &json, int &index, bool &success);
@@ -39,11 +39,16 @@ namespace QtJson {
     static int nextToken(const QString &json, int &index);
 
     template<typename T>
-    QByteArray serializeMap(const T &map, bool &success) {
-        QByteArray str = "{ ";
+    QByteArray serializeMap(const T &map, bool &success, int depth = 0) {
+        QByteArray str = "{\n";
+        QByteArray indent = "";
+        for (int i = 0; i < depth; i++)
+            indent.append(indentStr);
+        QByteArray indentInner = QByteArray(indent).append(indentStr);
+
         QList<QByteArray> pairs;
         for (typename T::const_iterator it = map.begin(), itend = map.end(); it != itend; ++it) {
-            QByteArray serializedValue = serialize(it.value());
+            QByteArray serializedValue = serialize(it.value(), depth+1);
             if (serializedValue.isNull()) {
                 success = false;
                 break;
@@ -51,8 +56,8 @@ namespace QtJson {
             pairs << sanitizeString(it.key()).toUtf8() + " : " + serializedValue;
         }
 
-        str += join(pairs, ", ");
-        str += " }";
+        str += join(pairs, ",\n", indentInner);
+        str += "\n"+indent + "}";
         return str;
     }
 
@@ -88,14 +93,18 @@ namespace QtJson {
         }
     }
 
-    QByteArray serialize(const QVariant &data) {
+    QByteArray serialize(const QVariant &data, int depth) {
         bool success = true;
-        return serialize(data, success);
+        return serialize(data, success, depth++);
     }
 
-    QByteArray serialize(const QVariant &data, bool &success) {
+    QByteArray serialize(const QVariant &data, bool &success, int depth) {
         QByteArray str;
         success = true;
+
+        QByteArray indent = "";
+        for (int i = 0; i < depth; i++)
+            indent.append(indentStr);
 
         if (!data.isValid()) { // invalid or null?
             str = "null";
@@ -112,11 +121,11 @@ namespace QtJson {
                 values << serializedValue;
             }
 
-            str = "[ " + join( values, ", " ) + " ]";
+            str = "[\n" + join( values, ",\n", QByteArray(indent).append(indentStr) ) + "\n"+indent+"]";
         } else if (data.type() == QVariant::Hash) { // variant is a hash?
-            str = serializeMap<>(data.toHash(), success);
+            str = serializeMap<>(data.toHash(), success, depth+1);
         } else if (data.type() == QVariant::Map) { // variant is a map?
-            str = serializeMap<>(data.toMap(), success);
+            str = serializeMap<>(data.toMap(), success, depth+1);
         } else if ((data.type() == QVariant::String) ||
                    (data.type() == QVariant::ByteArray)) {// a string or a byte array?
             str = sanitizeString(data.toString()).toUtf8();
@@ -195,13 +204,13 @@ namespace QtJson {
         return QString(QLatin1String("\"%1\"")).arg(str);
     }
 
-    static QByteArray join(const QList<QByteArray> &list, const QByteArray &sep) {
+    static QByteArray join(const QList<QByteArray> &list, const QByteArray &sep, const QByteArray &indent) {
         QByteArray res;
         Q_FOREACH(const QByteArray &i, list) {
             if (!res.isEmpty()) {
                 res += sep;
             }
-            res += i;
+            res += indent + i;
         }
         return res;
     }
@@ -542,6 +551,10 @@ namespace QtJson {
 
     QString getDateFormat() {
         return dateFormat;
+    }
+
+    void setIndentString(const QString &indent) {
+        indentStr = indent;
     }
 
 } //end namespace

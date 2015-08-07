@@ -59,7 +59,7 @@ namespace QtJson {
      *
      * \return QByteArray Textual JSON representation in UTF-8
      */
-    QByteArray serialize(const QVariant &data);
+    QByteArray serialize(const QVariant &data, int depth = -1);
 
     /**
      * This method generates a textual JSON representation
@@ -69,7 +69,7 @@ namespace QtJson {
      *
      * \return QByteArray Textual JSON representation in UTF-8
      */
-    QByteArray serialize(const QVariant &data, bool &success);
+    QByteArray serialize(const QVariant &data, bool &success, int depth);
 
     /**
      * This method generates a textual JSON representation
@@ -105,6 +105,13 @@ namespace QtJson {
      */
     QString getDateTimeFormat();
     QString getDateFormat();
+
+    /**
+     * This method sets the indentation string to be used
+     *
+     * \param QString to indent by.
+     */
+    void setIndentString(const QString& indent);
 }
 
 #endif //JSON_H
